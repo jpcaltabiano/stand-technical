@@ -95,7 +95,7 @@ async function runAllTests() {
     logic: { "equals": [ { "field": "Test Field" }, "foo" ] },
     vulnerability: "Test vulnerability.",
     mitigations: [
-      { type: "full", description: "Test full mitigation." }
+      { id: "test-rule-1-full-1", type: "full", description: "Test full mitigation." }
     ],
     version: 1,
     schema_version: 1
@@ -201,7 +201,7 @@ async function runAllTests() {
     description: 123, // should be string
     logic: {}, // missing required logic structure
     vulnerability: 42, // should be string
-    mitigations: "not-an-array", // should be array
+    mitigations: [ { id: "malformed-mit-1", type: "full", description: "desc" } ], // still malformed, but has id
     version: "one", // should be integer
     schema_version: 1
   };

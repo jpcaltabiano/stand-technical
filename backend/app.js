@@ -72,7 +72,7 @@ app.post('/evaluate', (req, res) => {
     if (!observation || typeof observation !== 'object') {
       return res.status(400).json({ error: 'Missing or invalid observation.' });
     }
-    // TODO: add validation for observation object, check fields are valid and not empty
+    // TODO: add validation for observation object against the schema, check fields are valid and not empty
     const rulesMeta = getRulesAndMeta(engine_version);
     const rules = rulesMeta.rules;
     const evaluationResult = evaluate(observation, rules, engine_version);
@@ -192,6 +192,55 @@ app.get('/engine-versions', (req, res) => {
   }
 });
 
+// POST /rules/test - test a rule against an observation without saving
+app.post('/rules/test', (req, res) => {
+  try {
+    const { rule, observation } = req.body;
+    if (!rule || typeof rule !== 'object') {
+      return res.status(400).json({ error: 'Missing or invalid rule.' });
+    }
+    if (!observation || typeof observation !== 'object') {
+      return res.status(400).json({ error: 'Missing or invalid observation.' });
+    }
+    // Validate rule against schema
+    const valid = validateRule(rule);
+    if (!valid) {
+      return res.status(400).json({ error: 'Rule validation failed', details: validateRule.errors });
+    }
+    // Collect required fields for the rule
+    const requiredFields = Array.from(collectTopLevelFields(rule.logic));
+    const presentFields = requiredFields.filter(field => field in observation);
+    const missingFields = requiredFields.filter(field => !(field in observation));
+    if (presentFields.length === 0) {
+      return res.json({
+        vulnerabilities: [],
+        bridge_mitigations_applied: [],
+        bridge_mitigation_count: 0,
+        note: 'No required fields present in observation.'
+      });
+    }
+    // Evaluate the rule
+    const appliedBridgeIds = Array.isArray(observation.applied_bridge_mitigations) ? observation.applied_bridge_mitigations : [];
+    const result = evaluateRule(rule, observation, missingFields, appliedBridgeIds);
+    const vulnerabilities = result ? [result] : [];
+    // Collect applied bridge mitigations for summary
+    const appliedBridgeMitigations = [];
+    (result?.mitigations || []).forEach(mit => {
+      if (mit.type === 'bridge' && mit.applied) {
+        appliedBridgeMitigations.push(mit.id);
+      }
+    });
+    res.json({
+      vulnerabilities,
+      bridge_mitigations_applied: appliedBridgeMitigations,
+      bridge_mitigation_count: appliedBridgeMitigations.length
+    });
+  } catch (e) {
+    console.error('Error in /rules/test:', e);
+    res.status(500).json({ error: 'Failed to test rule.' });
+  }
+});
+
 // Helper: Render logic node to human-readable string (simple, covers common cases)
 function renderLogic(node) {
   if (!node || typeof node !== 'object') return String(node);
@@ -242,11 +291,6 @@ const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
-
-//observation: a json object containing observations for a property. does not need to be complete
-//rules: a list of the rules to evalue the property again. can be all rules or a subset of them
-//engine_version: the version of the engine to evalue against
 
 // Helper: Evaluate a logic node against an observation
 function evalLogic(node, observation) {
@@ -380,17 +424,7 @@ function collectTopLevelFields(node, fields = new Set()) {
   return fields;
 }
 
-// Helper: Check if all required fields are present in the observation
-function hasAllFields(fields, observation) {
-  for (const field of fields) {
-    if (!(field in observation)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Evaluate all rules against an observation, now supporting potential vulnerabilities and applied bridge mitigations
+// Evaluate all rules against an observation
 const evaluate = (observation, rules, engine_version) => {
   const vulnerabilities = [];
   const appliedBridgeIds = Array.isArray(observation.applied_bridge_mitigations) ? observation.applied_bridge_mitigations : [];
@@ -421,12 +455,3 @@ const evaluate = (observation, rules, engine_version) => {
 };
 
 module.exports = { evaluate };
-
-/**
- * endpoints: 
- * /evaluate - evaluate an observation against a rule
- * /add_rule - add a rule to the database
- * /test_rule - run a test on a rule - takes a mock observation, rule, and expected outcome object
- * 
- * 
- */
