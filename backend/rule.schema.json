@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mitigation Rule",
+  "type": "object",
+  "required": ["id", "name", "description", "logic", "vulnerability", "mitigations", "version", "schema_version"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "logic": { "$ref": "#/definitions/logicNode" },
+    "vulnerability": { "type": "string" },
+    "mitigations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "description"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "enum": ["full", "bridge"] },
+          "description": { "type": "string" },
+          "only_if": { "$ref": "#/definitions/logicNode" }
+        }
+      }
+    },
+    "version": { "type": "integer" },
+    "schema_version": { "type": "integer" }
+  },
+  "definitions": {
+    "logicNode": {
+      "type": "object",
+      "oneOf": [
+        { "required": ["and"] },
+        { "required": ["or"] },
+        { "required": ["not"] },
+        { "required": ["if"] },
+        { "required": ["equals"] },
+        { "required": ["greater_than"] },
+        { "required": ["less_than"] },
+        { "required": ["in"] },
+        { "required": ["foreach"] },
+        { "required": ["field"] },
+        { "required": ["value"] },
+        { "required": ["calculate"] }
+      ],
+      "properties": {
+        "and": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/logicNode" },
+          "minItems": 1
+        },
+        "or": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/logicNode" },
+          "minItems": 1
+        },
+        "not": { "$ref": "#/definitions/logicNode" },
+        "if": {
+          "type": "object",
+          "required": ["condition", "then", "else"],
+          "properties": {
+            "condition": { "$ref": "#/definitions/logicNode" },
+            "then": { "$ref": "#/definitions/logicNode" },
+            "else": { "$ref": "#/definitions/logicNode" }
+          }
+        },
+        "equals": {
+          "type": "array",
+          "items": { "anyOf": [ { "$ref": "#/definitions/logicNode" }, { "type": ["string", "number", "boolean"] } ] },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "greater_than": {
+          "type": "array",
+          "items": { "anyOf": [ { "$ref": "#/definitions/logicNode" }, { "type": "number" } ] },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "less_than": {
+          "type": "array",
+          "items": { "anyOf": [ { "$ref": "#/definitions/logicNode" }, { "type": "number" } ] },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "in": {
+          "type": "array",
+          "items": [
+            { "$ref": "#/definitions/logicNode" },
+            {
+              "type": "array",
+              "items": { "type": ["string", "number", "boolean"] }
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "foreach": {
+          "type": "object",
+          "required": ["array_field", "satisfies"],
+          "properties": {
+            "array_field": { "type": "string" },
+            "where": { "$ref": "#/definitions/logicNode" },
+            "satisfies": { "$ref": "#/definitions/logicNode" }
+          }
+        },
+        "field": { "type": "string" },
+        "value": { "type": ["string", "number", "boolean"] },
+        "calculate": {
+          "type": "object",
+          "required": ["op", "args"],
+          "properties": {
+            "op": { "enum": ["add", "subtract", "multiply", "divide"] },
+            "args": {
+              "type": "array",
+              "items": { "anyOf": [ { "$ref": "#/definitions/logicNode" }, { "type": "number" } ] },
+              "minItems": 2
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+} 

@@ -1,0 +1,114 @@
+{
+  "created_at": "2024-07-24T12:00:00.000Z",
+  "rules": [
+    {
+      "id": "windows-safe-distance",
+      "name": "Windows",
+      "description": "Ensure windows can withstand heat exposure from nearby vegetation.",
+      "logic": {
+        "foreach": {
+          "array_field": "Vegetation",
+          "where": {
+            "in": [
+              { "field": "Type" },
+              ["Tree", "Shrub", "Grass"]
+            ]
+          },
+          "satisfies": {
+            "less_than": [
+              { "field": "Distance to Window" },
+              {
+                "calculate": {
+                  "op": "multiply",
+                  "args": [
+                    30,
+                    {
+                      "if": {
+                        "condition": { "equals": [ { "field": "Window Type" }, "Single" ] },
+                        "then": 3,
+                        "else": {
+                          "if": {
+                            "condition": { "equals": [ { "field": "Window Type" }, "Double" ] },
+                            "then": 2,
+                            "else": 1
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "condition": { "equals": [ { "field": "Type" }, "Shrub" ] },
+                        "then": 0.5,
+                        "else": {
+                          "if": {
+                            "condition": { "equals": [ { "field": "Type" }, "Grass" ] },
+                            "then": 0.33,
+                            "else": 1
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "vulnerability": "Window too close to vegetation for fire safety.",
+      "mitigations": [
+        { "id": "windows-bridge-1", "type": "bridge", "description": "Apply film to windows (reduces required distance by 20%)." },
+        { "id": "windows-bridge-2", "type": "bridge", "description": "Apply flame retardant to shrubs (reduces required distance by 25%)." },
+        { "id": "windows-bridge-3", "type": "bridge", "description": "Prune trees to safe height (reduces required distance by 50%)." },
+        { "id": "windows-full-1", "type": "full", "description": "Remove vegetation within safe distance or replace window with tempered glass." }
+      ],
+      "version": 1,
+      "schema_version": 1
+    },
+    {
+      "id": "attic-vent-has-screens",
+      "name": "Attic vent",
+      "description": "Ensure all vents, chimneys and screens can withstand embers (i.e., should be ember-rated)",
+      "logic": {
+        "not": {
+          "equals": [
+            { "field": "Attic Vent has Screens" },
+            "True"
+          ]
+        }
+      },
+      "vulnerability": "Attic vents, chimneys, or screens are not ember-rated or do not have screens.",
+      "mitigations": [
+        { "id": "attic-vent-full-1", "type": "full", "description": "Install ember-rated screens on all attic vents and chimneys." },
+        { "id": "attic-vent-bridge-1", "type": "bridge", "description": "Temporarily cover vents with fine mesh until ember-rated screens can be installed." }
+      ],
+      "version": 1,
+      "schema_version": 1
+    },
+    {
+      "id": "roof-class-and-maintenance",
+      "name": "Roof",
+      "description": "Ensure roof is Class A by assembly, free of gaps, and well maintained. In low wildfire areas (Category A) roofs can be Class B or Class A.",
+      "logic": {
+        "not": {
+          "or": [
+            { "equals": [ { "field": "Roof Type" }, "Class A" ] },
+            {
+              "and": [
+                { "equals": [ { "field": "Roof Type" }, "Class B" ] },
+                { "equals": [ { "field": "Wildfire Risk Category" }, "A" ] }
+              ]
+            }
+          ]
+        }
+      },
+      "vulnerability": "Roof does not meet wildfire safety standards for this risk category.",
+      "mitigations": [
+        { "id": "roof-full-1", "type": "full", "description": "Replace roof with Class A assembly, ensure all gaps are sealed, and roof is well maintained." },
+        { "id": "roof-bridge-1", "type": "bridge", "description": "Seal visible gaps and perform maintenance to improve roof condition. (Only available for Class B roofs in eligible areas)", "only_if": { "equals": [ { "field": "Roof Type" }, "Class B" ] } }
+      ],
+      "version": 3,
+      "schema_version": 1
+    }
+  ]
+}
