@@ -25,12 +25,12 @@
                     {
                       "if": {
                         "condition": { "equals": [ { "field": "Window Type" }, "Single" ] },
-                        "then": 3,
+                        "then": { "value": 3 },
                         "else": {
                           "if": {
                             "condition": { "equals": [ { "field": "Window Type" }, "Double" ] },
-                            "then": 2,
-                            "else": 1
+                            "then": { "value": 2 },
+                            "else": { "value": 1 }
                           }
                         }
                       }
@@ -38,12 +38,12 @@
                     {
                       "if": {
                         "condition": { "equals": [ { "field": "Type" }, "Shrub" ] },
-                        "then": 0.5,
+                        "then": { "value": 0.5 },
                         "else": {
                           "if": {
                             "condition": { "equals": [ { "field": "Type" }, "Grass" ] },
-                            "then": 0.33,
-                            "else": 1
+                            "then": { "value": 0.33 },
+                            "else": { "value": 1 }
                           }
                         }
                       }

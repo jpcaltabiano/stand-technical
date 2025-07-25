@@ -3,6 +3,27 @@ import EvaluationResults from '../components/EvaluationResults';
 
 const API_URL = 'http://localhost:3001';
 
+function ConfirmModal({ open, onConfirm, onCancel, action }) {
+  if (!open) return null;
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }}>
+      <div style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 340, boxShadow: '0 2px 16px #0002' }}>
+        <h4>Are you sure?</h4>
+        <div style={{ marginBottom: 16 }}>
+          This will <b>{action}</b> and create a new engine version. This action cannot be undone.
+        </div>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} style={{ padding: '0.5em 2em' }}>Cancel</button>
+          <button onClick={onConfirm} style={{ padding: '0.5em 2em', background: '#d33', color: '#fff', border: 'none', borderRadius: 4 }}>{action}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RuleEditorTool() {
   const [engineVersions, setEngineVersions] = useState([]);
   const [selectedEngineVersion, setSelectedEngineVersion] = useState('');
@@ -16,6 +37,8 @@ export default function RuleEditorTool() {
   const [testResult, setTestResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [modal, setModal] = useState({ open: false, action: '', onConfirm: null });
+  const [success, setSuccess] = useState('');
 
   // Fetch engine versions on mount
   useEffect(() => {
@@ -69,6 +92,7 @@ export default function RuleEditorTool() {
   const handleTest = async () => {
     setLoading(true);
     setError('');
+    setSuccess('');
     setTestResult(null);
     let rule, observation;
     try {
@@ -93,7 +117,7 @@ export default function RuleEditorTool() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Test failed');
-      setTestResult(data.result);
+      setTestResult(data);
     } catch (e) {
       setError(e.message || 'Failed to test rule.');
     } finally {
@@ -101,6 +125,83 @@ export default function RuleEditorTool() {
     }
   };
 
+  // --- Backend actions ---
+  const handleUpdateRule = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const rule = JSON.parse(ruleJson);
+      const res = await fetch(`${API_URL}/rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rule)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+      setSuccess('Rule updated and new engine version created!');
+      // Refresh rules/engine versions
+      fetch(`${API_URL}/engine-versions`).then(res => res.json()).then(setEngineVersions);
+      fetch(`${API_URL}/rules?engine_version=${selectedEngineVersion}`).then(res => res.json()).then(data => setRules(data.rules || []));
+    } catch (e) {
+      setError(e.message || 'Failed to update rule.');
+    } finally {
+      setLoading(false);
+      setModal({ open: false, action: '', onConfirm: null });
+    }
+  };
+
+  const handleDeleteRule = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch(`${API_URL}/rules/${selectedRuleId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Delete failed');
+      setSuccess('Rule deleted and new engine version created!');
+      // Refresh rules/engine versions
+      fetch(`${API_URL}/engine-versions`).then(res => res.json()).then(setEngineVersions);
+      fetch(`${API_URL}/rules?engine_version=${selectedEngineVersion}`).then(res => res.json()).then(data => setRules(data.rules || []));
+      setSelectedRuleId('');
+      setRuleJson('');
+    } catch (e) {
+      setError(e.message || 'Failed to delete rule.');
+    } finally {
+      setLoading(false);
+      setModal({ open: false, action: '', onConfirm: null });
+    }
+  };
+
+  const handleAddRule = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const rule = JSON.parse(ruleJson);
+      const res = await fetch(`${API_URL}/rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rule)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Add failed');
+      setSuccess('Rule added and new engine version created!');
+      // Refresh rules/engine versions
+      fetch(`${API_URL}/engine-versions`).then(res => res.json()).then(setEngineVersions);
+      fetch(`${API_URL}/rules?engine_version=${selectedEngineVersion}`).then(res => res.json()).then(data => setRules(data.rules || []));
+      setRuleJson('');
+    } catch (e) {
+      setError(e.message || 'Failed to add rule.');
+    } finally {
+      setLoading(false);
+      setModal({ open: false, action: '', onConfirm: null });
+    }
+  };
+
+  // --- Render ---
   return (
     <div>
       <h3>Rule Editor</h3>
@@ -157,7 +258,43 @@ export default function RuleEditorTool() {
       <button onClick={handleTest} disabled={loading} style={{ padding: '0.5em 2em', fontSize: 16 }}>
         {loading ? 'Testing...' : 'Test Rule Against Observation'}
       </button>
+      {mode === 'update' && selectedRuleId && (
+        <div style={{ marginTop: 24, display: 'flex', gap: 16 }}>
+          <button
+            onClick={() => setModal({ open: true, action: 'Update Rule', onConfirm: handleUpdateRule })}
+            disabled={loading}
+            style={{ padding: '0.5em 2em', background: '#0074D9', color: '#fff', border: 'none', borderRadius: 4 }}
+          >
+            Update Rule
+          </button>
+          <button
+            onClick={() => setModal({ open: true, action: 'Delete Rule', onConfirm: handleDeleteRule })}
+            disabled={loading}
+            style={{ padding: '0.5em 2em', background: '#d33', color: '#fff', border: 'none', borderRadius: 4 }}
+          >
+            Delete Rule
+          </button>
+        </div>
+      )}
+      {mode === 'add' && (
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={() => setModal({ open: true, action: 'Add New Rule', onConfirm: handleAddRule })}
+            disabled={loading}
+            style={{ padding: '0.5em 2em', background: '#2ecc40', color: '#fff', border: 'none', borderRadius: 4 }}
+          >
+            Add New Rule
+          </button>
+        </div>
+      )}
+      <ConfirmModal
+        open={modal.open}
+        action={modal.action}
+        onConfirm={modal.onConfirm}
+        onCancel={() => setModal({ open: false, action: '', onConfirm: null })}
+      />
       {error && <div style={{ color: 'red', marginTop: 16 }}>{error}</div>}
+      {success && <div style={{ color: 'green', marginTop: 16 }}>{success}</div>}
       <EvaluationResults results={testResult} title="Rule Test Results" />
     </div>
   );

@@ -1,0 +1,10 @@
+{
+  "Attic Vent has Screens": "False",
+  "Roof Type": "Class C",
+  "Wildfire Risk Category": "B",
+  "Window Type": "Single",
+  "Vegetation": [
+    { "Type": "Shrub", "Distance to Window": 10 },
+    { "Type": "Tree", "Distance to Window": 15 }
+  ]
+}
