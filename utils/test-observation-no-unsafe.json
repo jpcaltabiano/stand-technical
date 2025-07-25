@@ -1,0 +1,9 @@
+{
+  "Attic Vent has Screens": "True",
+  "Roof Type": "Class A",
+  "Wildfire Risk Category": "B",
+  "Window Type": "Tempered Glass",
+  "Vegetation": [
+    { "Type": "Shrub", "Distance to Window": 100 }
+  ]
+}
