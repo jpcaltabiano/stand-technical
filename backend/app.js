@@ -67,14 +67,17 @@ app.get('/', (req, res) => {
 
 app.post('/evaluate', (req, res) => {
   try {
-    const { observation, engine_version } = req.body;
+    const { observation, engine_version, rule_ids } = req.body;
     console.log('Incoming observation:', JSON.stringify(observation, null, 2));
     if (!observation || typeof observation !== 'object') {
       return res.status(400).json({ error: 'Missing or invalid observation.' });
     }
     // TODO: add validation for observation object against the schema, check fields are valid and not empty
     const rulesMeta = getRulesAndMeta(engine_version);
-    const rules = rulesMeta.rules;
+    let rules = rulesMeta.rules;
+    if (Array.isArray(rule_ids) && rule_ids.length > 0) {
+      rules = rules.filter(r => rule_ids.includes(r.id));
+    }
     const evaluationResult = evaluate(observation, rules, engine_version);
     console.log('Raw vulnerabilities (before mitigation filtering):', JSON.stringify(evaluationResult.vulnerabilities, null, 2));
     console.log('Final vulnerabilities (after mitigation filtering):', JSON.stringify(evaluationResult.vulnerabilities, null, 2));
